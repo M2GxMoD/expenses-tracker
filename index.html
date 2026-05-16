@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Expense Tracker | دراسة الصرفيات</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -514,6 +517,58 @@
     }
 
     .step-fade { animation: fadeUp 0.3s ease; }
+
+    /* ========== PDF EXPORT / IMPORT ========== */
+    .pdf-action-bar {
+      max-width: 1200px;
+      margin: 0 auto 16px;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn-pdf-export, .btn-pdf-import {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+      color: #fff;
+    }
+
+    .btn-pdf-export {
+      background: linear-gradient(90deg, #b71c1c, #ef5350);
+    }
+    .btn-pdf-export:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(239,83,80,0.4);
+    }
+
+    .btn-pdf-import {
+      background: linear-gradient(90deg, #1b5e20, #43a047);
+    }
+    .btn-pdf-import:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(67,160,71,0.4);
+    }
+
+    #pdf-import-status {
+      max-width: 1200px;
+      margin: -8px auto 14px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -566,6 +621,14 @@
 <div id="main-app">
   <h1>📊 <span data-i18n="app_title">دراسة الصرفيات</span></h1>
   <p class="subtitle" data-i18n="app_subtitle">تحليل شامل للمصاريف الشهرية والسنوية مع رسوم بيانية تفصيلية</p>
+
+  <div class="pdf-action-bar">
+    <label class="btn-pdf-import" title="Load data from a previously exported PDF">
+      📥 Import PDF
+      <input type="file" accept=".pdf" onchange="importPDF(this)" style="display:none"/>
+    </label>
+  </div>
+  <div id="pdf-import-status"></div>
 
   <div class="grid" id="inputSection">
 
@@ -648,7 +711,7 @@
     <!-- Daily Expenses -->
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
-        <span>🛒 <span data-i18n="section_daily">المصاريف اليومية والمتغيرة</span></span>
+        <span>🛒 <span data-i18n="section_daily">المصاريف اليومية والمتؼيرة</span></span>
         <button class="btn-suggest" onclick="suggestDaily()">✨ <span data-i18n="btn_suggest">اقتراح توزيع</span></button>
       </div>
       <div id="suggest_msg" style="display:none"></div>
@@ -709,6 +772,9 @@
 
   <!-- ===== RESULTS ===== -->
   <div id="results" style="max-width:1200px;margin:30px auto 0">
+    <div class="pdf-action-bar" style="margin-bottom:14px">
+      <button class="btn-pdf-export" onclick="exportPDF()">📄 Export PDF</button>
+    </div>
 
     <div class="card full-width" style="margin-bottom:20px">
       <div class="card-title">📋 <span data-i18n="section_summary">ملخص مالي سريع</span></div>
@@ -818,7 +884,7 @@ const T = {
     label_bank_loan:  'قرض بنكي',
     label_personal_debt:'دين شخصي (قسط شهري)',
     label_other_debt: 'التزامات أخرى',
-    section_daily:    'المصاريف اليومية والمتغيرة',
+    section_daily:    'المصاريف اليومية والمتؼيرة',
     btn_suggest:      'اقتراح توزيع',
     label_food:       '🍽️ الغذاء والمطعم',
     label_transport:  '🚗 المواصلات / وقود',
@@ -1127,6 +1193,245 @@ function renderTable({income,t,elec,inet,phone,water,rent,car,bank,personal,othD
     const pct=income>0?((r.val/income)*100).toFixed(1):'0.0';
     return '<tr><td>'+r.label+'</td><td><span class="badge '+(bc[r.cat]||'daily')+'">'+r.cat+'</span></td><td>'+fmt(r.val)+'</td><td>'+fmt(r.val*12)+'</td><td>'+pct+'%</td></tr>';
   }).join('');
+}
+
+// ==================== PDF EXPORT ====================
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { alert('PDF library not loaded. Please try again.'); return; }
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+
+  // ASCII-safe fmt for PDF (currency symbol may contain Arabic chars)
+  const fmtP = n => currency.code + ' ' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:0 });
+
+  // Collect all values
+  const sal=v('salary'),ext=v('extra'),othi=v('other_income');
+  const elec=v('electricity'),inet=v('internet'),ph=v('phone'),wat=v('water'),ren=v('rent');
+  const car=v('car_loan'),bnk=v('bank_loan'),pdt=v('personal_debt'),odt=v('other_debt');
+  const fod=v('food'),trn=v('transport'),hlt=v('health'),clt=v('clothes');
+  const ent=v('entertainment'),edu=v('education'),gft=v('gifts'),msc=v('misc');
+  const goal=v('savings_goal');
+  const income=sal+ext+othi;
+  const commits=elec+inet+ph+wat+ren;
+  const debts=car+bnk+pdt+odt;
+  const daily=fod+trn+hlt+clt+ent+edu+gft+msc;
+  const totalExp=commits+debts+daily+goal;
+  const balance=income-totalExp;
+  const pct=income>0?Math.round((totalExp/income)*100):0;
+
+  // Page background
+  doc.setFillColor(14,18,28); doc.rect(0,0,W,297,'F');
+
+  // Header banner
+  doc.setFillColor(10,25,55); doc.rect(0,0,W,38,'F');
+  doc.setFontSize(20); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('Expense Tracker',M,16);
+  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(66,165,245);
+  doc.text('Monthly & Annual Financial Report',M,25);
+  const dateStr=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  doc.setFontSize(8); doc.setTextColor(144,164,174);
+  doc.text(dateStr,W-M,25,{align:'right'});
+  doc.setFillColor(66,165,245); doc.roundedRect(W-M-28,10,28,10,2,2,'F');
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text(currency.code,W-M-14,17,{align:'center'});
+
+  let y=47;
+
+  // Summary section header
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(66,165,245);
+  doc.text('Financial Summary',M,y); y+=4;
+  doc.setDrawColor(66,165,245); doc.setLineWidth(0.25); doc.line(M,y,W-M,y); y+=7;
+
+  // Stat boxes — 2 rows x 3 cols
+  const bW=(W-M*2-8)/3, bH=24;
+  const stats=[
+    {label:'Total Monthly Income',    val:fmtP(income),                          rgb:[102,187,106]},
+    {label:'Total Monthly Expenses',  val:fmtP(totalExp),                        rgb:[239,83,80]},
+    {label:'Commitments + Debts',     val:fmtP(commits+debts),                   rgb:[255,167,38]},
+    {label:'Monthly Balance',         val:fmtP(balance),                         rgb:balance>=0?[66,165,245]:[239,83,80]},
+    {label:'Total Annual Expenses',   val:fmtP(totalExp*12),                     rgb:[171,71,188]},
+    {label:'Expected Annual Savings', val:fmtP(balance>0?balance*12:0),          rgb:[102,187,106]},
+  ];
+  stats.forEach((s,i)=>{
+    const col=i%3, row=Math.floor(i/3);
+    const bx=M+col*(bW+4), by=y+row*(bH+5);
+    doc.setFillColor(22,30,48); doc.roundedRect(bx,by,bW,bH,3,3,'F');
+    doc.setFillColor(s.rgb[0],s.rgb[1],s.rgb[2]); doc.rect(bx,by,bW,2,'F');
+    doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(s.rgb[0],s.rgb[1],s.rgb[2]);
+    doc.text(s.val,bx+bW/2,by+12,{align:'center'});
+    doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(144,164,174);
+    doc.text(s.label,bx+bW/2,by+19,{align:'center'});
+  });
+  y+=2*(bH+5)+8;
+
+  // Budget alert bar
+  if(income>0){
+    const msg=balance<0
+      ?'WARNING: Expenses exceed income by '+fmtP(Math.abs(balance))+'/month'
+      :pct>=90
+        ?'ALERT: Spending '+pct+'% of income. Consider reducing some items.'
+        :'Budget OK — '+fmtP(balance)+' remaining/month ('+pct+'% spent)';
+    const rgb=balance<0?[239,83,80]:pct>=90?[255,167,38]:[102,187,106];
+    doc.setFillColor(Math.round(rgb[0]*0.12),Math.round(rgb[1]*0.12),Math.round(rgb[2]*0.12));
+    doc.roundedRect(M,y,W-M*2,11,2,2,'F');
+    doc.setDrawColor(rgb[0],rgb[1],rgb[2]); doc.setLineWidth(0.3);
+    doc.roundedRect(M,y,W-M*2,11,2,2,'S');
+    doc.setFontSize(8.5); doc.setFont('helvetica','bold'); doc.setTextColor(rgb[0],rgb[1],rgb[2]);
+    doc.text(msg,M+4,y+7); y+=17;
+  }
+
+  // Breakdown table header
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(66,165,245);
+  doc.text('Expense Breakdown',M,y); y+=4;
+  doc.setDrawColor(66,165,245); doc.line(M,y,W-M,y); y+=2;
+
+  const tableRows=[
+    ['Electricity',elec,'Fixed'],    ['Internet',inet,'Fixed'],
+    ['Phone / Mobile',ph,'Fixed'],   ['Water',wat,'Fixed'],
+    ['Rent / Mortgage',ren,'Fixed'], ['Car Loan',car,'Debt'],
+    ['Bank Loan',bnk,'Debt'],        ['Personal Debt',pdt,'Debt'],
+    ['Other Debts',odt,'Debt'],      ['Food & Dining',fod,'Daily'],
+    ['Transport / Fuel',trn,'Daily'],['Health & Medicine',hlt,'Daily'],
+    ['Clothes & Shopping',clt,'Daily'],['Entertainment',ent,'Daily'],
+    ['Education',edu,'Daily'],       ['Gifts & Occasions',gft,'Daily'],
+    ['Miscellaneous',msc,'Daily'],   ['Savings Goal',goal,'Savings'],
+  ].filter(r=>r[1]>0);
+
+  doc.autoTable({
+    startY:y, margin:{left:M,right:M},
+    head:[['Expense Item','Category','Monthly','Annual','% Income']],
+    body:tableRows.map(([item,val,cat])=>[
+      item, cat, fmtP(val), fmtP(val*12),
+      income>0?((val/income)*100).toFixed(1)+'%':'0.0%',
+    ]),
+    styles:{fillColor:[18,24,38],textColor:[207,216,220],fontSize:8.5,cellPadding:3.5},
+    headStyles:{fillColor:[10,30,65],textColor:[66,165,245],fontStyle:'bold',fontSize:9.5},
+    alternateRowStyles:{fillColor:[22,30,48]},
+    columnStyles:{
+      0:{cellWidth:60}, 1:{cellWidth:22},
+      2:{cellWidth:36,halign:'right'}, 3:{cellWidth:36,halign:'right'},
+      4:{cellWidth:23,halign:'center'},
+    },
+    didParseCell(data){
+      if(data.section==='body'&&data.column.index===1){
+        const rgb={Fixed:[66,165,245],Debt:[255,167,38],Daily:[102,187,106],Savings:[171,71,188]}[data.cell.raw]||[150,150,170];
+        data.cell.styles.textColor=rgb;
+        data.cell.styles.fontStyle='bold';
+        data.cell.styles.halign='center';
+      }
+    },
+  });
+
+  // Embed data for reimport (base64-encoded JSON with unique markers)
+  const embedData={
+    v:1, lang, currency:currency.code,
+    salary:sal, extra:ext, other_income:othi,
+    electricity:elec, internet:inet, phone:ph, water:wat, rent:ren,
+    car_loan:car, bank_loan:bnk, personal_debt:pdt, other_debt:odt,
+    food:fod, transport:trn, health:hlt, clothes:clt,
+    entertainment:ent, education:edu, gifts:gft, misc:msc,
+    savings_goal:goal,
+  };
+  const b64str=btoa(JSON.stringify(embedData));
+  const MS='EXPENSE_IMPORT_B64_V1::';
+  const ME='::END_EXPENSE_DATA';
+  const fullMarker=MS+b64str+ME;
+
+  let fy=(doc.lastAutoTable?doc.lastAutoTable.finalY:y)+10;
+  if(fy+22>285){doc.addPage();doc.setFillColor(14,18,28);doc.rect(0,0,W,297,'F');fy=20;}
+
+  doc.setFillColor(16,20,32); doc.setDrawColor(45,55,75); doc.setLineWidth(0.2);
+  doc.roundedRect(M,fy,W-M*2,20,2,2,'FD');
+  doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(70,90,110);
+  doc.text('IMPORT KEY — do not delete: allows reloading this report data into the Expense Tracker app',M+3,fy+5);
+  doc.setFont('helvetica','normal'); doc.setTextColor(55,70,88); doc.setFontSize(5);
+  const half=Math.ceil(fullMarker.length/2);
+  doc.text(fullMarker.slice(0,half),M+3,fy+11);
+  doc.text(fullMarker.slice(half),M+3,fy+16);
+
+  // Footer on every page
+  const totalPages=doc.internal.getNumberOfPages();
+  for(let pg=1;pg<=totalPages;pg++){
+    doc.setPage(pg);
+    doc.setFontSize(7); doc.setTextColor(60,72,88);
+    doc.text('Expense Tracker  —  '+dateStr+'  —  Page '+pg+' of '+totalPages, W/2,292,{align:'center'});
+  }
+
+  doc.save('expense-report-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// ==================== PDF IMPORT ====================
+async function importPDF(input) {
+  const file=input.files[0];
+  if(!file) return;
+  input.value='';
+
+  const statusEl=document.getElementById('pdf-import-status');
+  const show=(msg,type)=>{
+    const s={
+      info:  ['rgba(66,165,245,0.15)','#42a5f5','#90caf9'],
+      success:['rgba(102,187,106,0.15)','#66bb6a','#a5d6a7'],
+      error: ['rgba(239,83,80,0.15)','#ef5350','#ef9a9a'],
+    }[type]||['rgba(66,165,245,0.15)','#42a5f5','#90caf9'];
+    statusEl.style.display='block';
+    statusEl.style.background=s[0];
+    statusEl.style.border='1px solid '+s[1];
+    statusEl.style.color=s[2];
+    statusEl.textContent=msg;
+  };
+
+  show('⏳ Reading PDF…','info');
+
+  try {
+    const buf=await file.arrayBuffer();
+    if(typeof pdfjsLib==='undefined') throw new Error('PDF.js library not loaded yet. Please refresh and try again.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
+
+    const pdfDoc=await pdfjsLib.getDocument({data:buf}).promise;
+    let fullText='';
+    for(let pg=1;pg<=pdfDoc.numPages;pg++){
+      const page=await pdfDoc.getPage(pg);
+      const content=await page.getTextContent();
+      fullText+=content.items.map(i=>i.str).join('');
+    }
+
+    // Strip all whitespace — pdfjs may inject spaces between text items
+    const clean=fullText.replace(/\s/g,'');
+    const MS='EXPENSE_IMPORT_B64_V1::';
+    const ME='::END_EXPENSE_DATA';
+    const si=clean.indexOf(MS);
+    const ei=clean.indexOf(ME,si);
+    if(si===-1||ei===-1) throw new Error('No import data found in this PDF. Only PDFs exported from this app can be imported.');
+
+    const b64=clean.slice(si+MS.length,ei);
+    const data=JSON.parse(atob(b64));
+
+    // Restore language & currency from saved data
+    if(data.lang&&T[data.lang]) lang=data.lang;
+    if(data.currency){const cur=currencies.find(c=>c.code===data.currency);if(cur) currency=cur;}
+
+    // Ensure main app is visible (in case still on welcome screen)
+    const ws=document.getElementById('welcome-screen');
+    if(ws&&ws.style.display!=='none'){ws.style.opacity='0';setTimeout(()=>ws.style.display='none',400);}
+    const app=document.getElementById('main-app');
+    app.style.display='block'; app.style.opacity='1';
+    applyLang();
+
+    // Populate all expense fields
+    ['salary','extra','other_income','electricity','internet','phone','water','rent',
+     'car_loan','bank_loan','personal_debt','other_debt','food','transport','health',
+     'clothes','entertainment','education','gifts','misc','savings_goal'].forEach(f=>{
+      const el=document.getElementById(f);
+      if(el) el.value=(data[f]&&data[f]>0)?data[f]:'';
+    });
+
+    show('✅ Data loaded successfully! Calculating results…','success');
+    setTimeout(calculate,350);
+  } catch(err) {
+    show('❌ Import failed: '+err.message,'error');
+  }
 }
 
 buildCurrencyGrid();
