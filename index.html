@@ -1472,27 +1472,27 @@ async function importPDF(input) {
     statusEl.textContent=msg;
   };
 
-  show(’⏳ Reading PDF…’,’info’);
+  show('⏳ Reading PDF...','info');
 
   try {
     const buf=await file.arrayBuffer();
-    if(typeof pdfjsLib===’undefined’) throw new Error(’PDF.js library not loaded yet. Please refresh and try again.’);
-    pdfjsLib.GlobalWorkerOptions.workerSrc=’https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js’;
+    if(typeof pdfjsLib==='undefined') throw new Error('PDF.js library not loaded yet. Please refresh and try again.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
 
     const pdfDoc=await pdfjsLib.getDocument({data:buf}).promise;
-    let fullText=’’;
+    let fullText='';
     for(let pg=1;pg<=pdfDoc.numPages;pg++){
       const page=await pdfDoc.getPage(pg);
       const content=await page.getTextContent();
-      fullText+=content.items.map(i=>i.str).join(’’);
+      fullText+=content.items.map(i=>i.str).join('');
     }
 
-    const clean=fullText.replace(/\s/g,’’);
-    const MS=’EXPENSE_IMPORT_B64_V1::’;
-    const ME=’::END_EXPENSE_DATA’;
+    const clean=fullText.replace(/\s/g,'');
+    const MS='EXPENSE_IMPORT_B64_V1::';
+    const ME='::END_EXPENSE_DATA';
     const si=clean.indexOf(MS);
     const ei=clean.indexOf(ME,si);
-    if(si===-1||ei===-1) throw new Error(’No import data found in this PDF. Only PDFs exported from this app can be imported.’);
+    if(si===-1||ei===-1) throw new Error('No import data found in this PDF. Only PDFs exported from this app can be imported.');
 
     const b64=clean.slice(si+MS.length,ei);
     const data=JSON.parse(atob(b64));
@@ -1500,20 +1500,20 @@ async function importPDF(input) {
     if(data.lang&&T[data.lang]) lang=data.lang;
     if(data.currency){const cur=currencies.find(c=>c.code===data.currency);if(cur) currency=cur;}
 
-    const ws=document.getElementById(’welcome-screen’);
-    if(ws&&ws.style.display!==’none’){ws.style.opacity=’0’;setTimeout(()=>ws.style.display=’none’,400);}
-    const app=document.getElementById(’main-app’);
-    app.style.display=’block’; app.style.opacity=’1’;
+    const ws=document.getElementById('welcome-screen');
+    if(ws&&ws.style.display!=='none'){ws.style.opacity='0';setTimeout(()=>ws.style.display='none',400);}
+    const app=document.getElementById('main-app');
+    app.style.display='block'; app.style.opacity='1';
     applyLang();
 
-    [’salary’,’extra’,’other_income’,’electricity’,’internet’,’phone’,’water’,’rent’,
-     ’car_loan’,’bank_loan’,’personal_debt’,’other_debt’,’food’,’transport’,’health’
+    ['salary','extra','other_income','electricity','internet','phone','water','rent',
+     'car_loan','bank_loan','personal_debt','other_debt','food','transport','health',
      'clothes','entertainment','education','gifts','misc','savings_goal'].forEach(f=>{
       const el=document.getElementById(f);
       if(el) el.value=(data[f]&&data[f]>0)?data[f]:'';
     });
 
-    show('✅ Data loaded successfully! Calculating results…','success');
+    show('✅ Data loaded successfully! Calculating results...','success');
     setTimeout(calculate,350);
   } catch(err) {
     show('❌ Import failed: '+err.message,'error');
