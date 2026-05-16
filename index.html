@@ -226,7 +226,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      z-index: 999;
+      z-index: 9999;
       direction: ltr;
     }
     #lang-toggle {
@@ -234,26 +234,32 @@
       border: 1px solid #2a4a7a;
       color: #90caf9;
       border-radius: 20px;
-      padding: 6px 14px;
+      padding: 6px 14px 6px 10px;
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
       white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      pointer-events: auto;
     }
+    #lang-toggle img { width: 22px; height: 16px; border-radius: 3px; display: block; }
     #lang-toggle:hover { background: #223560; border-color: #42a5f5; color: #fff; }
     #currency-select {
       background: #1a2a4a;
       border: 1px solid #2a4a7a;
       color: #90caf9;
       border-radius: 20px;
-      padding: 6px 12px;
+      padding: 6px 28px 6px 12px;
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
-      appearance: none;
-      -webkit-appearance: none;
+      appearance: auto;
+      -webkit-appearance: auto;
       transition: all 0.2s;
+      min-width: 80px;
     }
     #currency-select:hover, #currency-select:focus {
       background: #223560; border-color: #42a5f5; color: #fff; outline: none;
@@ -661,7 +667,10 @@
 
 <!-- ========== TOP CONTROLS ========== -->
 <div id="top-controls">
-  <button id="lang-toggle" onclick="toggleLang()">🇺🇸 English</button>
+  <button id="lang-toggle" onclick="toggleLang()">
+    <img id="lang-flag" src="https://flagcdn.com/24x18/us.png" alt="flag"/>
+    <span id="lang-label">English</span>
+  </button>
   <select id="currency-select" onchange="changeCurrency(this.value)"></select>
 </div>
 
@@ -1129,9 +1138,11 @@ function applyLang() {
     if (t[key] && typeof t[key] === 'string') el.textContent = t[key];
   });
   document.querySelectorAll('.unit').forEach(u => u.textContent = currency.symbol);
-  // Update lang toggle button label
-  const btn = document.getElementById('lang-toggle');
-  if (btn) btn.textContent = lang === 'ar' ? '🇺🇸 English' : '🇸🇦 عربي';
+  // Update lang toggle button (flag + label)
+  const flagImg = document.getElementById('lang-flag');
+  const langLabel = document.getElementById('lang-label');
+  if (flagImg) flagImg.src = lang === 'ar' ? 'https://flagcdn.com/24x18/us.png' : 'https://flagcdn.com/24x18/sa.png';
+  if (langLabel) langLabel.textContent = lang === 'ar' ? 'English' : 'عربي';
   // Update currency select option labels
   buildCurrencySelect();
 }
@@ -1498,20 +1509,20 @@ async function importPDF(input) {
     applyLang();
 
     [’salary’,’extra’,’other_income’,’electricity’,’internet’,’phone’,’water’,’rent’,
-     ’car_loan’,’bank_loan’,’personal_debt’,’other_debt’,’food’,’transport’,’health’,
-     ’clothes’,’entertainment’,’education’,’gifts’,’misc’,’savings_goal’].forEach(f=>{
+     ’car_loan’,’bank_loan’,’personal_debt’,’other_debt’,’food’,’transport’,’health’
+     'clothes','entertainment','education','gifts','misc','savings_goal'].forEach(f=>{
       const el=document.getElementById(f);
-      if(el) el.value=(data[f]&&data[f]>0)?data[f]:’’;
+      if(el) el.value=(data[f]&&data[f]>0)?data[f]:'';
     });
 
-    show(’✅ Data loaded successfully! Calculating results…’,’success’);
+    show('✅ Data loaded successfully! Calculating results…','success');
     setTimeout(calculate,350);
   } catch(err) {
-    show(’❌ Import failed: ’+err.message,’error’);
+    show('❌ Import failed: '+err.message,'error');
   }
 }
 
-window.addEventListener(’DOMContentLoaded’, initApp);
+window.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
 </html>
