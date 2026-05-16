@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>دراسة الصرفيات الشهرية والسنوية</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #000;
+      min-height: 100vh;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 8px;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #90caf9;
+      margin-bottom: 30px;
+      font-size: 0.95rem;
+    }
+
+    /* ===== GRID LAYOUT ===== */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.4rem; }
+    }
+
+    /* ===== CARD ===== */
+    .card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 22px 24px;
+      backdrop-filter: blur(6px);
+    }
+
+    .card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: #90caf9;
+      border-bottom: 1px solid rgba(144,202,249,0.25);
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ===== FORM ROWS ===== */
+    .form-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 13px;
+      gap: 10px;
+    }
+
+    .form-row label {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #cfd8dc;
+    }
+
+    .form-row input {
+      width: 140px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 0.95rem;
+      text-align: left;
+      direction: ltr;
+      transition: border 0.2s;
+    }
+
+    .form-row input:focus {
+      outline: none;
+      border-color: #42a5f5;
+      background: rgba(66,165,245,0.1);
+    }
+
+    .form-row input::placeholder { color: #78909c; }
+
+    .unit {
+      font-size: 0.8rem;
+      color: #78909c;
+      min-width: 34px;
+      text-align: center;
+    }
+
+    /* ===== CALCULATE BUTTON ===== */
+    .btn-calc {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin-top: 8px;
+      background: linear-gradient(90deg, #1565c0, #42a5f5);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      letter-spacing: 1px;
+    }
+
+    .btn-calc:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(66,165,245,0.4);
+    }
+
+    .btn-calc:active { transform: translateY(0); }
+
+    /* ===== RESULTS SECTION ===== */
+    #results { display: none; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-box .val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .stat-box .lbl {
+      font-size: 0.8rem;
+      color: #90a4ae;
+    }
+
+    .green  { color: #66bb6a; }
+    .red    { color: #ef5350; }
+    .yellow { color: #ffa726; }
+    .blue   { color: #42a5f5; }
+    .purple { color: #ab47bc; }
+
+    /* ===== CHARTS ===== */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+
+    .chart-box {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .chart-box h3 {
+      text-align: center;
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+      color: #90caf9;
+    }
+
+    canvas { max-width: 100%; }
+
+    /* ===== BREAKDOWN TABLE ===== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: rgba(66,165,245,0.2);
+      color: #90caf9;
+      padding: 10px 12px;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      color: #cfd8dc;
+    }
+
+    tr:hover td { background: rgba(255,255,255,0.04); }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-commit  { background: rgba(239,83,80,0.25);  color: #ef9a9a; }
+    .badge-daily   { background: rgba(102,187,106,0.25); color: #a5d6a7; }
+    .badge-debt    { background: rgba(255,167,38,0.25);  color: #ffcc80; }
+    .badge-savings { background: rgba(66,165,245,0.25);  color: #90caf9; }
+
+    /* ===== ALERT ===== */
+    .alert {
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-top: 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .alert-danger  { background: rgba(239,83,80,0.2);  border: 1px solid #ef5350; color: #ef9a9a; }
+    .alert-warning { background: rgba(255,167,38,0.2); border: 1px solid #ffa726; color: #ffcc80; }
+    .alert-success { background: rgba(102,187,106,0.2);border: 1px solid #66bb6a; color: #a5d6a7; }
+
+    /* ===== SEPARATOR ===== */
+    .sep {
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 14px 0;
+    }
+
+    .section-header {
+      font-size: 0.8rem;
+      color: #546e7a;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== SUGGEST BUTTON ===== */
+    .btn-suggest {
+      padding: 6px 14px;
+      background: linear-gradient(90deg, #6a1b9a, #ab47bc);
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    .btn-suggest:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(171,71,188,0.5);
+    }
+    .btn-suggest:active { transform: translateY(0); }
+
+    .suggest-info {
+      background: rgba(171,71,188,0.12);
+      border: 1px solid rgba(171,71,188,0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 0.82rem;
+      color: #ce93d8;
+      line-height: 1.6;
+    }
+
+    .suggest-error {
+      background: rgba(239,83,80,0.12);
+      border: 1px solid rgba(239,83,80,0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 0.82rem;
+      color: #ef9a9a;
+    }
+
+    .form-row input.suggested {
+      border-color: #ab47bc;
+      background: rgba(171,71,188,0.15);
+      animation: pulse-in 0.4s ease;
+    }
+
+    @keyframes pulse-in {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<h1>📊 دراسة الصرفيات</h1>
+<p class="subtitle">تحليل شامل للمصاريف الشهرية والسنوية مع رسوم بيانية تفصيلية</p>
+
+<div class="grid" id="inputSection">
+
+  <!-- === الدخل === -->
+  <div class="card">
+    <div class="card-title">💰 الدخل الشهري</div>
+    <div class="form-row">
+      <label>الراتب الأساسي</label>
+      <input type="number" id="salary" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>دخل إضافي / عمل حر</label>
+      <input type="number" id="extra" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>مصادر أخرى</label>
+      <input type="number" id="other_income" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+  </div>
+
+  <!-- === الالتزامات الثابتة === -->
+  <div class="card">
+    <div class="card-title">🔒 الالتزامات الثابتة</div>
+    <div class="section-header">الخدمات</div>
+    <div class="form-row">
+      <label>⚡ فاتورة الكهرباء</label>
+      <input type="number" id="electricity" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>🌐 الإنترنت</label>
+      <input type="number" id="internet" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>📱 الهاتف / الموبايل</label>
+      <input type="number" id="phone" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>💧 فاتورة الماء</label>
+      <input type="number" id="water" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>🏠 إيجار / قسط بيت</label>
+      <input type="number" id="rent" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+  </div>
+
+  <!-- === الديون والأقساط === -->
+  <div class="card">
+    <div class="card-title">💳 الديون والأقساط الشهرية</div>
+    <div class="form-row">
+      <label>قسط سيارة</label>
+      <input type="number" id="car_loan" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>قرض بنكي</label>
+      <input type="number" id="bank_loan" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>دين شخصي (قسط شهري)</label>
+      <input type="number" id="personal_debt" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>التزامات أخرى</label>
+      <input type="number" id="other_debt" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+  </div>
+
+  <!-- === المصاريف اليومية === -->
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>🛒 المصاريف اليومية والمتغيرة</span>
+      <button class="btn-suggest" onclick="suggestDaily()" title="يوزّع المصاريف تلقائياً بناءً على دخلك والتزاماتك">✨ اقتراح توزيع</button>
+    </div>
+    <div id="suggest_msg" style="display:none"></div>
+    <div class="form-row">
+      <label>🍽️ الغذاء والمطعم</label>
+      <input type="number" id="food" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>🚗 المواصلات / وقود</label>
+      <input type="number" id="transport" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>🏥 صحة وأدوية</label>
+      <input type="number" id="health" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>👕 ملابس وأغراض</label>
+      <input type="number" id="clothes" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>🎮 ترفيه وتسلية</label>
+      <input type="number" id="entertainment" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>📚 تعليم وكورسات</label>
+      <input type="number" id="education" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>🎁 هدايا ومناسبات</label>
+      <input type="number" id="gifts" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <div class="form-row">
+      <label>📦 متفرقات أخرى</label>
+      <input type="number" id="misc" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+  </div>
+
+  <!-- === الادخار === -->
+  <div class="card full-width">
+    <div class="card-title">🏦 هدف الادخار الشهري</div>
+    <div class="form-row" style="max-width:400px">
+      <label>المبلغ الذي تريد ادخاره شهرياً</label>
+      <input type="number" id="savings_goal" placeholder="0" min="0"/>
+      <span class="unit">ر.س</span>
+    </div>
+    <button class="btn-calc" onclick="calculate()">⚙️ احسب الآن</button>
+  </div>
+
+</div>
+
+<!-- ============================= RESULTS ============================= -->
+<div id="results" style="max-width:1200px;margin:30px auto 0;">
+
+  <!-- Summary Stats -->
+  <div class="card full-width" style="margin-bottom:20px">
+    <div class="card-title">📋 ملخص مالي سريع</div>
+    <div class="summary-grid">
+      <div class="stat-box">
+        <div class="val green" id="r_income">0</div>
+        <div class="lbl">إجمالي الدخل الشهري</div>
+      </div>
+      <div class="stat-box">
+        <div class="val red" id="r_total_exp">0</div>
+        <div class="lbl">إجمالي الصرفيات الشهرية</div>
+      </div>
+      <div class="stat-box">
+        <div class="val yellow" id="r_commits">0</div>
+        <div class="lbl">الالتزامات الثابتة + الديون</div>
+      </div>
+      <div class="stat-box">
+        <div class="val blue" id="r_balance">0</div>
+        <div class="lbl">الرصيد المتبقي شهرياً</div>
+      </div>
+      <div class="stat-box">
+        <div class="val purple" id="r_annual_exp">0</div>
+        <div class="lbl">إجمالي الصرفيات السنوية</div>
+      </div>
+      <div class="stat-box">
+        <div class="val green" id="r_annual_save">0</div>
+        <div class="lbl">المدخرات المتوقعة سنوياً</div>
+      </div>
+    </div>
+    <div id="alert_box"></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid" style="margin-bottom:20px">
+    <div class="chart-box">
+      <h3>🍕 توزيع الصرفيات الشهرية</h3>
+      <canvas id="pieChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>📊 مقارنة الفئات الشهرية</h3>
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>📈 المقارنة السنوية (دخل vs صرفيات vs ادخار)</h3>
+      <canvas id="annualBar"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>🎯 نسبة الصرف من الدخل</h3>
+      <canvas id="donutChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Breakdown Table -->
+  <div class="card full-width">
+    <div class="card-title">📂 تفاصيل بنود الصرف</div>
+    <table>
+      <thead>
+        <tr>
+          <th>البند</th>
+          <th>التصنيف</th>
+          <th>المبلغ الشهري</th>
+          <th>المبلغ السنوي</th>
+          <th>نسبة من الدخل</th>
+        </tr>
+      </thead>
+      <tbody id="breakdown_body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ==================== SUGGEST DAILY EXPENSES ====================
+function suggestDaily() {
+  const msgEl = document.getElementById('suggest_msg');
+
+  // حساب الدخل
+  const totalIncome =
+    (parseFloat(document.getElementById('salary').value)       || 0) +
+    (parseFloat(document.getElementById('extra').value)        || 0) +
+    (parseFloat(document.getElementById('other_income').value) || 0);
+
+  if (totalIncome <= 0) {
+    msgEl.className = 'suggest-error';
+    msgEl.style.display = 'block';
+    msgEl.textContent = '⚠️ الرجاء إدخال الدخل الشهري أولاً قبل طلب الاقتراح.';
+    return;
+  }
+
+  // حساب الالتزامات
+  const commits =
+    (parseFloat(document.getElementById('electricity').value)   || 0) +
+    (parseFloat(document.getElementById('internet').value)      || 0) +
+    (parseFloat(document.getElementById('phone').value)         || 0) +
+    (parseFloat(document.getElementById('water').value)         || 0) +
+    (parseFloat(document.getElementById('rent').value)          || 0) +
+    (parseFloat(document.getElementById('car_loan').value)      || 0) +
+    (parseFloat(document.getElementById('bank_loan').value)     || 0) +
+    (parseFloat(document.getElementById('personal_debt').value) || 0) +
+    (parseFloat(document.getElementById('other_debt').value)    || 0);
+
+  const available = totalIncome - commits;
+
+  if (available <= 0) {
+    msgEl.className = 'suggest-error';
+    msgEl.style.display = 'block';
+    msgEl.textContent = '⚠️ التزاماتك تساوي أو تتجاوز دخلك! لا يوجد مبلغ متاح للتوزيع.';
+    return;
+  }
+
+  // ---- توزيع معقول ----
+  // نحجز 15% للادخار، ونوزّع الـ 85% الباقية على المصاريف اليومية
+  const savingsPct = 0.15;
+  const distributable = available * (1 - savingsPct);
+
+  // نسب التوزيع من المبلغ القابل للصرف
+  const dist = {
+    food:          0.38,
+    transport:     0.17,
+    health:        0.10,
+    clothes:       0.10,
+    entertainment: 0.08,
+    education:     0.07,
+    gifts:         0.05,
+    misc:          0.05,
+  };
+
+  const round50 = v => Math.round(v / 50) * 50;   // تقريب لأقرب 50
+
+  const values = {};
+  for (const [key, pct] of Object.entries(dist)) {
+    values[key] = round50(distributable * pct);
+  }
+
+  // ملء الخانات مع أنيميشن
+  const fields = ['food','transport','health','clothes','entertainment','education','gifts','misc'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    el.value = values[id];
+    el.classList.remove('suggested');
+    void el.offsetWidth;               // إعادة تشغيل الأنيميشن
+    el.classList.add('suggested');
+  });
+
+  // ضع هدف الادخار المقترح
+  const sugSavings = round50(available * savingsPct);
+  const savEl = document.getElementById('savings_goal');
+  savEl.value = sugSavings;
+  savEl.classList.remove('suggested');
+  void savEl.offsetWidth;
+  savEl.classList.add('suggested');
+
+  // رسالة توضيحية
+  const fmt2 = v => Number(v).toLocaleString('ar-SA');
+  msgEl.className = 'suggest-info';
+  msgEl.style.display = 'block';
+  msgEl.innerHTML =
+    `✨ <strong>تم التوزيع التلقائي</strong> بناءً على دخلك <strong>${fmt2(totalIncome)} ر.س</strong> والتزاماتك <strong>${fmt2(commits)} ر.س</strong><br>` +
+    `المتاح للصرف والادخار: <strong>${fmt2(available)} ر.س</strong> — ` +
+    `منها <strong>${fmt2(sugSavings)} ر.س</strong> ادخار مقترح (15%) و<strong>${fmt2(round50(distributable))} ر.س</strong> مصاريف يومية (85%)<br>` +
+    `<span style="font-size:0.77rem;color:#ba68c8">يمكنك تعديل أي خانة قبل الضغط على احسب الآن</span>`;
+}
+
+// ==================== HELPERS ====================
+const fmt = v => Number(v).toLocaleString('ar-IQ');
+const pct = (v, total) => total > 0 ? ((v / total) * 100).toFixed(1) + '%' : '0%';
+const getVal = id => parseFloat(document.getElementById(id).value) || 0;
+
+let pieChartInst, barChartInst, annualBarInst, donutChartInst;
+
+function destroyCharts() {
+  [pieChartInst, barChartInst, annualBarInst, donutChartInst].forEach(c => { if(c) c.destroy(); });
+}
+
+// ==================== MAIN CALCULATE ====================
+function calculate() {
+  // --- INCOME ---
+  const salary       = getVal('salary');
+  const extra        = getVal('extra');
+  const other_income = getVal('other_income');
+  const totalIncome  = salary + extra + other_income;
+
+  // --- COMMITMENTS ---
+  const electricity  = getVal('electricity');
+  const internet     = getVal('internet');
+  const phone        = getVal('phone');
+  const water        = getVal('water');
+  const rent         = getVal('rent');
+  const totalServices = electricity + internet + phone + water + rent;
+
+  // --- DEBTS ---
+  const car_loan     = getVal('car_loan');
+  const bank_loan    = getVal('bank_loan');
+  const personal_debt= getVal('personal_debt');
+  const other_debt   = getVal('other_debt');
+  const totalDebts   = car_loan + bank_loan + personal_debt + other_debt;
+
+  const totalCommits = totalServices + totalDebts;
+
+  // --- DAILY ---
+  const food         = getVal('food');
+  const transport    = getVal('transport');
+  const health       = getVal('health');
+  const clothes      = getVal('clothes');
+  const entertainment= getVal('entertainment');
+  const education    = getVal('education');
+  const gifts        = getVal('gifts');
+  const misc         = getVal('misc');
+  const totalDaily   = food + transport + health + clothes + entertainment + education + gifts + misc;
+
+  // --- SAVINGS GOAL ---
+  const savingsGoal  = getVal('savings_goal');
+
+  const totalExp     = totalCommits + totalDaily;
+  const balance      = totalIncome - totalExp;
+  const annualIncome = totalIncome * 12;
+  const annualExp    = totalExp * 12;
+  const annualSavings= balance * 12;
+
+  // --- UPDATE STAT BOXES ---
+  document.getElementById('r_income').textContent    = fmt(totalIncome)    + ' ر.س';
+  document.getElementById('r_total_exp').textContent = fmt(totalExp)       + ' ر.س';
+  document.getElementById('r_commits').textContent   = fmt(totalCommits)   + ' ر.س';
+
+  const balEl = document.getElementById('r_balance');
+  balEl.textContent = fmt(balance) + ' ر.س';
+  balEl.className = 'val ' + (balance >= 0 ? 'blue' : 'red');
+
+  document.getElementById('r_annual_exp').textContent  = fmt(annualExp)    + ' ر.س';
+  document.getElementById('r_annual_save').textContent = fmt(annualSavings) + ' ر.س';
+
+  // --- ALERT ---
+  const alertBox = document.getElementById('alert_box');
+  const expRatio = totalIncome > 0 ? totalExp / totalIncome : 1;
+  if (balance < 0) {
+    alertBox.innerHTML = `<div class="alert alert-danger">⚠️ تحذير: صرفياتك تتجاوز دخلك بمقدار <strong>${fmt(Math.abs(balance))} ر.س</strong> شهرياً. يجب مراجعة الميزانية فوراً!</div>`;
+  } else if (expRatio > 0.85) {
+    alertBox.innerHTML = `<div class="alert alert-warning">⚡ تنبيه: أنت تصرف <strong>${(expRatio*100).toFixed(0)}%</strong> من دخلك. يُنصح بخفض بعض البنود.</div>`;
+  } else if (savingsGoal > 0 && balance < savingsGoal) {
+    alertBox.innerHTML = `<div class="alert alert-warning">🎯 الرصيد المتبقي (${fmt(balance)} ر.س) أقل من هدف الادخار (${fmt(savingsGoal)} ر.س). الفرق: <strong>${fmt(savingsGoal - balance)} ر.س</strong></div>`;
+  } else {
+    alertBox.innerHTML = `<div class="alert alert-success">✅ ميزانيتك في وضع جيد! الرصيد المتبقي <strong>${fmt(balance)} ر.س</strong> شهرياً.</div>`;
+  }
+
+  // --- BUILD TABLE ---
+  const rows = [
+    { name: '⚡ كهرباء',         cat: 'التزام', val: electricity },
+    { name: '🌐 إنترنت',         cat: 'التزام', val: internet },
+    { name: '📱 هاتف / موبايل',  cat: 'التزام', val: phone },
+    { name: '💧 ماء',            cat: 'التزام', val: water },
+    { name: '🏠 إيجار / قسط',   cat: 'التزام', val: rent },
+    { name: '🚗 قسط سيارة',     cat: 'دين',    val: car_loan },
+    { name: '🏦 قرض بنكي',       cat: 'دين',    val: bank_loan },
+    { name: '👤 دين شخصي',       cat: 'دين',    val: personal_debt },
+    { name: '📎 التزامات أخرى', cat: 'دين',    val: other_debt },
+    { name: '🍽️ غذاء',           cat: 'يومي',  val: food },
+    { name: '🚗 مواصلات',        cat: 'يومي',  val: transport },
+    { name: '🏥 صحة',            cat: 'يومي',  val: health },
+    { name: '👕 ملابس',          cat: 'يومي',  val: clothes },
+    { name: '🎮 ترفيه',          cat: 'يومي',  val: entertainment },
+    { name: '📚 تعليم',          cat: 'يومي',  val: education },
+    { name: '🎁 هدايا',          cat: 'يومي',  val: gifts },
+    { name: '📦 متفرقات',        cat: 'يومي',  val: misc },
+  ].filter(r => r.val > 0);
+
+  if (savingsGoal > 0) rows.push({ name: '🏦 هدف الادخار', cat: 'ادخار', val: savingsGoal });
+
+  const badgeMap = {
+    'التزام': 'badge-commit',
+    'دين':    'badge-debt',
+    'يومي':   'badge-daily',
+    'ادخار':  'badge-savings',
+  };
+
+  const tbody = document.getElementById('breakdown_body');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td><span class="badge ${badgeMap[r.cat]}">${r.cat}</span></td>
+      <td>${fmt(r.val)} ر.س</td>
+      <td>${fmt(r.val * 12)} ر.س</td>
+      <td>${pct(r.val, totalIncome)}</td>
+    </tr>
+  `).join('');
+
+  // SHOW RESULTS FIRST (so canvas elements have dimensions)
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+
+  // ==================== CHARTS ====================
+  destroyCharts();
+
+  const COLORS = [
+    '#ef5350','#ff7043','#ffa726','#ffee58',
+    '#66bb6a','#26c6da','#42a5f5','#7e57c2',
+    '#ec407a','#26a69a','#8d6e63','#78909c',
+    '#d4e157','#29b6f6','#ab47bc','#5c6bc0','#ff8a65'
+  ];
+
+  // PIE — category breakdown
+  const pieLabels = rows.map(r => r.name);
+  const pieData   = rows.map(r => r.val);
+
+  pieChartInst = new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: {
+      labels: pieLabels,
+      datasets: [{ data: pieData, backgroundColor: COLORS, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#cfd8dc', font: { size: 10 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${fmt(ctx.parsed)} ر.س  (${pct(ctx.parsed, totalExp)})`
+          }
+        }
+      }
+    }
+  });
+
+  // BAR — category groups
+  const groups = [
+    { label: 'الالتزامات', val: totalServices, color: '#ef5350' },
+    { label: 'الديون',     val: totalDebts,    color: '#ffa726' },
+    { label: 'المعيشة',   val: totalDaily,    color: '#66bb6a' },
+    { label: 'الادخار',   val: savingsGoal,   color: '#42a5f5' },
+  ].filter(g => g.val > 0);
+
+  barChartInst = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: groups.map(g => g.label),
+      datasets: [{
+        label: 'المبلغ الشهري (ر.س)',
+        data: groups.map(g => g.val),
+        backgroundColor: groups.map(g => g.color),
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.y)} ر.س` } }
+      },
+      scales: {
+        x: { ticks: { color: '#cfd8dc' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#cfd8dc' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  // ANNUAL BAR — دخل vs صرف vs ادخار
+  annualBarInst = new Chart(document.getElementById('annualBar'), {
+    type: 'bar',
+    data: {
+      labels: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+      datasets: [
+        { label: 'الدخل',    data: Array(12).fill(totalIncome), backgroundColor: 'rgba(102,187,106,0.6)', borderRadius: 4 },
+        { label: 'الصرفيات', data: Array(12).fill(totalExp),    backgroundColor: 'rgba(239,83,80,0.6)',   borderRadius: 4 },
+        { label: 'المتبقي',  data: Array(12).fill(Math.max(0,balance)), backgroundColor: 'rgba(66,165,245,0.6)', borderRadius: 4 },
+      ]
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: '#cfd8dc', font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)} ر.س` } }
+      },
+      scales: {
+        x: { ticks: { color: '#90a4ae', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#90a4ae' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // DONUT — نسب
+  const remaining = Math.max(0, totalIncome - totalExp);
+  donutChartInst = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['الالتزامات والديون', 'المصاريف اليومية', 'الرصيد المتبقي'],
+      datasets: [{
+        data: [totalCommits, totalDaily, remaining],
+        backgroundColor: ['#ef5350','#ffa726','#66bb6a'],
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.08)'
+      }]
+    },
+    options: {
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#cfd8dc', font: { size: 11 }, boxWidth: 14 } },
+        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed)} ر.س  (${pct(ctx.parsed, totalIncome)})` } }
+      }
+    }
+  });
+
+  setTimeout(() => resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+</script>
+</body>
+</html>
