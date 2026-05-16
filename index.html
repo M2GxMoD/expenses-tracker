@@ -1173,8 +1173,6 @@ function initApp() {
   applyLang();
 }
 
-window.addEventListener('DOMContentLoaded', initApp);
-
 function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
 function fmt(n) {
   const loc = T[lang].locale;
@@ -1522,7 +1520,7 @@ async function importPDF(input) {
   }
 }
 
-window.addEventListener('DOMContentLoaded', initApp);
+initApp();
 </script>
 </body>
 </html>
