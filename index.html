@@ -1542,17 +1542,26 @@ function exportPDF() {
   const ME='::END_EXPENSE_DATA';
   const fullMarker=MS+b64str+ME;
 
+  // Primary embed: PDF metadata (100% reliable round-trip)
+  doc.setProperties({
+    title:'Expense Tracker Report',
+    subject:'Monthly Expense Report',
+    keywords: fullMarker,
+    creator:'Expense Tracker App'
+  });
+
   let fy=(doc.lastAutoTable?doc.lastAutoTable.finalY:y)+10;
-  if(fy+22>285){doc.addPage();doc.setFillColor(14,18,28);doc.rect(0,0,W,297,'F');fy=20;}
+  if(fy+28>285){doc.addPage();doc.setFillColor(14,18,28);doc.rect(0,0,W,297,'F');fy=20;}
 
   doc.setFillColor(16,20,32); doc.setDrawColor(45,55,75); doc.setLineWidth(0.2);
-  doc.roundedRect(M,fy,W-M*2,20,2,2,'FD');
+  doc.roundedRect(M,fy,W-M*2,26,2,2,'FD');
   doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(70,90,110);
   doc.text('IMPORT KEY — do not delete: allows reloading this report data into the Expense Tracker app',M+3,fy+5);
   doc.setFont('helvetica','normal'); doc.setTextColor(55,70,88); doc.setFontSize(5);
-  const half=Math.ceil(fullMarker.length/2);
-  doc.text(fullMarker.slice(0,half),M+3,fy+11);
-  doc.text(fullMarker.slice(half),M+3,fy+16);
+  // Fallback embed: split into short lines for reliable text extraction
+  const lineW=W-M*2-8;
+  const markerLines=doc.splitTextToSize(fullMarker, lineW);
+  markerLines.forEach((ln,i)=>{ doc.text(ln,M+3,fy+11+(i*4.5)); });
 
   // Footer on every page
   const totalPages=doc.internal.getNumberOfPages();
@@ -1593,21 +1602,33 @@ async function importPDF(input) {
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
 
     const pdfDoc=await pdfjsLib.getDocument({data:buf}).promise;
-    let fullText='';
-    for(let pg=1;pg<=pdfDoc.numPages;pg++){
-      const page=await pdfDoc.getPage(pg);
-      const content=await page.getTextContent();
-      fullText+=content.items.map(i=>i.str).join('');
-    }
-
-    const clean=fullText.replace(/\s/g,'');
     const MS='EXPENSE_IMPORT_B64_V1::';
     const ME='::END_EXPENSE_DATA';
-    const si=clean.indexOf(MS);
-    const ei=clean.indexOf(ME,si);
-    if(si===-1||ei===-1) throw new Error('No import data found in this PDF. Only PDFs exported from this app can be imported.');
+    let b64='';
 
-    const b64=clean.slice(si+MS.length,ei);
+    // Method 1: read from PDF metadata (most reliable)
+    try {
+      const meta=await pdfDoc.getMetadata();
+      const kw=(meta&&meta.info&&meta.info.Keywords)||'';
+      const si=kw.indexOf(MS), ei=kw.indexOf(ME,si);
+      if(si!==-1&&ei!==-1) b64=kw.slice(si+MS.length,ei);
+    } catch(e){}
+
+    // Method 2: fallback — extract from text content
+    if(!b64){
+      let fullText='';
+      for(let pg=1;pg<=pdfDoc.numPages;pg++){
+        const page=await pdfDoc.getPage(pg);
+        const content=await page.getTextContent();
+        fullText+=content.items.map(i=>i.str).join(' ');
+      }
+      const clean=fullText.replace(/\s/g,'');
+      const si=clean.indexOf(MS), ei=clean.indexOf(ME,si);
+      if(si!==-1&&ei!==-1) b64=clean.slice(si+MS.length,ei);
+    }
+
+    if(!b64) throw new Error('No import data found in this PDF. Only PDFs exported from this app can be imported.');
+
     const data=JSON.parse(atob(b64));
 
     if(data.lang&&T[data.lang]) lang=data.lang;
